@@ -7,7 +7,8 @@
 
 ## 📱 Демонстрация
 
-![alt text](image.png)
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/6f513411-6fce-4bfb-8383-de902993efec" />
+
 
 ## ✨ Возможности
 
