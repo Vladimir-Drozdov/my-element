@@ -287,12 +287,11 @@ class ChildEditorHost extends LitElement {
 
       if (token !== this._buildToken) return;
 
-      // САНИТАЙЗИНГ — убираем card_mod перед открытием редактора ===
+      // санитайзинг — убираем card_mod перед открытием редактора 
       const editorConfig = structuredClone(this.cardConfig);
       const originalCardMod = editorConfig.card_mod;   // сохраняем для возврата
       delete editorConfig.card_mod;                    // убираем, чтобы редактор не падал
 
-      // КРИТИЧЕСКИЙ ПОРЯДОК
       editor.addEventListener("config-changed", this._onConfigChanged);
       mount.replaceChildren(editor);
       this._editorEl = editor;
@@ -300,7 +299,7 @@ class ChildEditorHost extends LitElement {
       editor.hass = this.hass;
 
       if (typeof editor.setConfig === "function") {
-        editor.setConfig(editorConfig);   // передаём ЧИСТЫЙ конфиг
+        editor.setConfig(editorConfig);   // передаём чистый конфиг
       } else {
         editor.config = editorConfig;
       }
