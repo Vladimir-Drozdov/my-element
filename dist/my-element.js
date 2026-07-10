@@ -1,17 +1,4 @@
-//import { LitElement, html, css } from "https://unpkg.com/lit@2.8.0/index.js?module";
-//import { LitElement, html, css } from "https://esm.run/lit@3";
-//import { LitElement, html, css } from "https://unpkg.com/lit@3/index.js?module";
 import { LitElement, html, css } from "/local/lib/lit.js";
-const yieldToMain = () => {
-  if (typeof scheduler !== "undefined" && scheduler.postTask) {
-    return scheduler.postTask(() => {}, { priority: "background" });
-  }
-  return new Promise(r => {
-    const ch = new MessageChannel();
-    ch.port1.onmessage = r;
-    ch.port2.postMessage(null);
-  });
-};
 class MyElement extends LitElement {
   static properties = {
     hass: {},
@@ -49,10 +36,13 @@ class MyElement extends LitElement {
       return div;
     }
   }
-  async setConfig(config) {
+  setConfig(config) {
     this.config = { cards: [], ...config };
     if (!this.config.cards) this.config.cards = [];
+    this._buildCards();
+  }
 
+  async _buildCards() {
     const token = ++this.#token;
     const helpers = await window.loadCardHelpers();
     if (token !== this.#token) return;
@@ -70,7 +60,6 @@ class MyElement extends LitElement {
     if (!this._hass || !this._cards?.length) return;
     for (const card of this._cards) {
       card.hass = this._hass;
-      await yieldToMain(); // та же функция что добавили ранее
     }
   }
 
@@ -85,6 +74,10 @@ class MyElement extends LitElement {
     if (changedProps.has('_cards') && this._hass) {
       this._spreadHass();
     }
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.#token++;
   }
 
 
@@ -132,6 +125,11 @@ class MyElement extends LitElement {
       padding: 1px;
       box-sizing: border-box;
       overflow: visible;
+      opacity: 0;
+      animation: itemReveal 0.15s ease 0.45s forwards;
+    }
+    @keyframes itemReveal {
+      to { opacity: 1; }
     }
   `;
 
@@ -287,11 +285,12 @@ class ChildEditorHost extends LitElement {
 
       if (token !== this._buildToken) return;
 
-      // санитайзинг — убираем card_mod перед открытием редактора 
+      // САНИТАЙЗИНГ — убираем card_mod перед открытием редактора ===
       const editorConfig = structuredClone(this.cardConfig);
       const originalCardMod = editorConfig.card_mod;   // сохраняем для возврата
       delete editorConfig.card_mod;                    // убираем, чтобы редактор не падал
 
+      // КРИТИЧЕСКИЙ ПОРЯДОК
       editor.addEventListener("config-changed", this._onConfigChanged);
       mount.replaceChildren(editor);
       this._editorEl = editor;
@@ -299,7 +298,7 @@ class ChildEditorHost extends LitElement {
       editor.hass = this.hass;
 
       if (typeof editor.setConfig === "function") {
-        editor.setConfig(editorConfig);   // передаём чистый конфиг
+        editor.setConfig(editorConfig);   // передаём ЧИСТЫЙ конфиг
       } else {
         editor.config = editorConfig;
       }
@@ -348,10 +347,7 @@ const coverTileCardMod = {
       box-sizing: border-box !important;
       --tile-color: transparent !important;
       padding: 16px !important;
-      opacity: 0;
-      animation: cmReady 0.15s ease 0.35s forwards;
     }
-    @keyframes cmReady { to { opacity: 1; } }
 
     ha-card::before {
       content: "" !important;
@@ -844,9 +840,8 @@ class MyElementEditor extends LitElement {
     dialog.style.setProperty("--mdc-dialog-min-width", "420px");
 
     const content = document.createElement("div");
-    content.style.cssText = "padding: 20px 28px 12px;";
+    content.style.cssText = "padding: 20px 28px 12px; display: flex; flex-direction: column; gap: 10px;";
 
-    // Используем обычный HTML select — он гораздо стабильнее внутри ha-dialog
     const select = document.createElement("select");
     select.style.cssText = `
       width: 100%;
@@ -865,7 +860,30 @@ class MyElementEditor extends LitElement {
       select.appendChild(option);
     });
 
+    const manualInput = document.createElement("input");
+    manualInput.type = "text";
+    manualInput.placeholder = "custom:my-super-card";
+    manualInput.style.cssText = `
+      display: none;
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border-radius: 8px;
+      box-sizing: border-box;
+      background: var(--card-background-color, #1e1e1e);
+      color: var(--primary-text-color);
+      border: 1px solid var(--divider-color);
+    `;
+
+    select.addEventListener("change", () => {
+      const chosen = popularCards[parseInt(select.value)];
+      const isOther = chosen?.type === "other";
+      manualInput.style.display = isOther ? "block" : "none";
+      if (isOther) manualInput.focus();
+    });
+
     content.appendChild(select);
+    content.appendChild(manualInput);
     dialog.appendChild(content);
 
     const cancelBtn = document.createElement("ha-button");
@@ -893,8 +911,12 @@ class MyElementEditor extends LitElement {
       }
 
       if (chosen.type === "other") {
-        const manualType = prompt("Введите type карточки (например: custom:my-super-card):");
-        if (!manualType) return;
+        const manualType = manualInput.value.trim();
+        if (!manualType) {
+          manualInput.focus();
+          manualInput.style.border = "1px solid var(--error-color)";
+          return;
+        }
         newCard = { type: manualType };
       }
 
@@ -906,10 +928,7 @@ class MyElementEditor extends LitElement {
 
       dialog.close();
       dialog.remove();
-
-      // this._editCard(cards.length - 1);   // если надо сразу редактировать
     });
-
     cancelBtn.addEventListener("click", () => {
       dialog.close();
       dialog.remove();
@@ -950,7 +969,6 @@ class MyElementEditor extends LitElement {
 }
 
 
-//customElements.define("my-element", MyElement);
 if (!customElements.get("my-element")) {
   customElements.define("my-element", MyElement);
 }
