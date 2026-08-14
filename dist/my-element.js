@@ -812,6 +812,8 @@ class MyElementEditor extends LitElement {
       { label: "Emelya Dryer",            type: "custom:emelya-dryer-card",       config: { base_path: "/local" } },
       { label: "Emelya Breezer",            type: "custom:emelya-breezer-card",       config: { base_path: "/local" } },
       { label: "Dual Thermostat",          type: "custom:dual-thermostat-card",    config: {} },
+      { label: "Emelya Turn On/Off",       type: "custom:emelya-turn-on-off-card", config: { base_path: "/local" } },
+      { label: "Emelya Ventilation",       type: "custom:emelya-ventilation-card", config: { base_path: "/local" } },
 
       {
         label: "Tile: Шторы (Cover Open-Close)",
